@@ -42,6 +42,7 @@ typedef enum sle_adv_data {
     SLE_ADV_DATA_TYPE_MANUFACTURER_SPECIFIC_DATA                   = 0xFF    /* 厂商自定义信息 */
 } sle_adv_data_type;
 
+errcode_t sle_dev_register_cbks(void);
 errcode_t sle_uart_server_adv_init(void);
 
 errcode_t sle_uart_announce_register_cbks(void);

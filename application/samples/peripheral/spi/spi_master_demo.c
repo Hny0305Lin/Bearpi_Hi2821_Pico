@@ -23,43 +23,28 @@
 #define SPI_WAIT_CYCLES                 0x10
 
 #define SPI_TASK_STACK_SIZE             0x1000
-#define SPI_TASK_DURATION_MS            500
+#define SPI_TASK_DURATION_MS            1000
 #define SPI_TASK_PRIO                   (osPriority_t)(17)
 
 static void app_spi_init_pin(void)
 {
-    uapi_pin_set_mode(CONFIG_SPI_DI_MASTER_PIN, CONFIG_SPI_MASTER_PIN_MODE);
-    uapi_pin_set_mode(CONFIG_SPI_DO_MASTER_PIN, CONFIG_SPI_MASTER_PIN_MODE);
-    uapi_pin_set_mode(CONFIG_SPI_CLK_MASTER_PIN, CONFIG_SPI_MASTER_PIN_MODE);
-    uapi_pin_set_mode(CONFIG_SPI_CS_MASTER_PIN, CONFIG_SPI_MASTER_PIN_MODE);
-}
-
-#if defined(CONFIG_SPI_SUPPORT_INTERRUPT) && (CONFIG_SPI_SUPPORT_INTERRUPT == 1)
-static void app_spi_master_write_int_handler(const void *buffer, uint32_t length)
-{
-    unused(buffer);
-    unused(length);
-    osal_printk("spi master write interrupt start!\r\n");
-}
-
-static void app_spi_master_rx_callback(const void *buffer, uint32_t length, bool error)
-{
-    if (buffer == NULL || length == 0) {
-        osal_printk("spi master transfer illegal data!\r\n");
-        return;
+    if (CONFIG_SPI_MASTER_BUS_ID == 0) {
+        uapi_pin_set_mode(CONFIG_SPI_DI_MASTER_PIN, HAL_PIO_SPI0_RXD);
+        uapi_pin_set_mode(CONFIG_SPI_DO_MASTER_PIN, HAL_PIO_SPI0_TXD);
+        uapi_pin_set_mode(CONFIG_SPI_CLK_MASTER_PIN, HAL_PIO_SPI0_SCLK);
+        uapi_pin_set_mode(CONFIG_SPI_CS_MASTER_PIN, HAL_PIO_SPI0_CS0);      
+    }else if (CONFIG_SPI_MASTER_BUS_ID == 1) {
+        uapi_pin_set_mode(CONFIG_SPI_DI_MASTER_PIN, HAL_PIO_SPI1_RXD);
+        uapi_pin_set_mode(CONFIG_SPI_DO_MASTER_PIN, HAL_PIO_SPI1_TXD);
+        uapi_pin_set_mode(CONFIG_SPI_CLK_MASTER_PIN, HAL_PIO_SPI1_CLK);
+        uapi_pin_set_mode(CONFIG_SPI_CS_MASTER_PIN, HAL_PIO_SPI1_CS0);     
+    }else if (CONFIG_SPI_MASTER_BUS_ID == 2) {
+        uapi_pin_set_mode(CONFIG_SPI_DI_MASTER_PIN, HAL_PIO_SPI2_RXD);
+        uapi_pin_set_mode(CONFIG_SPI_DO_MASTER_PIN, HAL_PIO_SPI2_TXD);
+        uapi_pin_set_mode(CONFIG_SPI_CLK_MASTER_PIN, HAL_PIO_SPI2_CLK);
+        uapi_pin_set_mode(CONFIG_SPI_CS_MASTER_PIN, HAL_PIO_SPI2_CS0);         
     }
-    if (error) {
-        osal_printk("app_spi_master_read_int error!\r\n");
-        return;
-    }
-
-    uint8_t *buff = (uint8_t *)buffer;
-    for (uint32_t i = 0; i < length; i++) {
-        osal_printk("buff[%d] = %x\r\n", i, buff[i]);
-    }
-    osal_printk("app_spi_master_read_int success!\r\n");
 }
-#endif  /* CONFIG_SPI_SUPPORT_INTERRUPT */
 
 static void app_spi_master_init_config(void)
 {
@@ -79,20 +64,7 @@ static void app_spi_master_init_config(void)
     config.sste = 1;
 
     ext_config.qspi_param.wait_cycles = SPI_WAIT_CYCLES;
-
-#if defined(CONFIG_SPI_SUPPORT_DMA) && (CONFIG_SPI_SUPPORT_DMA == 1)
-    uapi_dma_init();
-    uapi_dma_open();
-#endif  /* CONFIG_SPI_SUPPORT_DMA */
-
     uapi_spi_init(CONFIG_SPI_MASTER_BUS_ID, &config, &ext_config);
-
-#if defined(CONFIG_SPI_SUPPORT_INTERRUPT) && (CONFIG_SPI_SUPPORT_INTERRUPT == 1)
-    if (uapi_spi_set_irq_mode(CONFIG_SPI_MASTER_BUS_ID, true, app_spi_master_rx_callback,
-        app_spi_master_write_int_handler) == ERRCODE_SUCC) {
-        osal_printk("spi%d master set irq mode succ!\r\n", CONFIG_SPI_MASTER_BUS_ID);
-    }
-#endif  /* CONFIG_SPI_SUPPORT_INTERRUPT */
 }
 
 static void *spi_master_task(const char *arg)
@@ -127,11 +99,9 @@ static void *spi_master_task(const char *arg)
         }
         osal_printk("spi%d master receive start!\r\n", CONFIG_SPI_MASTER_BUS_ID);
         if (uapi_spi_master_read(CONFIG_SPI_MASTER_BUS_ID, &data, 0xFFFFFFFF) == ERRCODE_SUCC) {
-#ifndef CONFIG_SPI_SUPPORT_INTERRUPT
             for (uint32_t i = 0; i < data.rx_bytes; i++) {
                 osal_printk("spi%d master receive data is %x\r\n", CONFIG_SPI_MASTER_BUS_ID, data.rx_buff[i]);
             }
-#endif
             osal_printk("spi%d master receive succ!\r\n", CONFIG_SPI_MASTER_BUS_ID);
         }
     }

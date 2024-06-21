@@ -18,7 +18,6 @@ extern "C" {
 #endif /* __cplusplus */
 
 errcode_t ble_uart_start_scan(void);
-
 errcode_t ble_uart_set_scan_parameters(void);
 
 #ifdef __cplusplus

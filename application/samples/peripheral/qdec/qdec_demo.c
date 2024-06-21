@@ -29,7 +29,7 @@ static int32_t app_qdec_report_callback(int argc, char *argv[])
 static void *qdec_task(const char *arg)
 {
     unused(arg);
-    qdec_port_pinmux_init(CONFIG_QDEC_A_PIN, CONFIG_QDEC_B_PIN);
+    qdec_port_pinmux_init(13, 14);
 
     /* QDEC Init Config. */
     uapi_qdec_init(&g_app_qdec_config);

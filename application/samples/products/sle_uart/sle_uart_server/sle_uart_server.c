@@ -6,27 +6,27 @@
  * History: \n
  * 2023-07-17, Create file. \n
  */
-
+#include "common_def.h"
 #include "securec.h"
-#include "sle_common.h"
-#include "osal_debug.h"
+#include "soc_osal.h"
 #include "sle_errcode.h"
-#include "osal_addr.h"
-#include "osal_task.h"
+#include "sle_device_manager.h"
 #include "sle_connection_manager.h"
 #include "sle_device_discovery.h"
 #include "sle_uart_server_adv.h"
 #include "sle_uart_server.h"
-
-#define OCTET_BIT_LEN 8
-#define UUID_LEN_2 2
-#define UUID_INDEX 14
-#define BT_INDEX_4     4
-#define BT_INDEX_0     0
-#define UART_BUFF_LENGTH    0x100
+#ifdef CONFIG_SAMPLE_SUPPORT_LOW_LATENCY_TYPE
+#include "sle_low_latency.h"
+#endif
+#define OCTET_BIT_LEN           8
+#define UUID_LEN_2              2
+#define UUID_INDEX              14
+#define BT_INDEX_4              4
+#define BT_INDEX_0              0
+#define UART_BUFF_LENGTH        0x100
 
 /* 广播ID */
-#define SLE_ADV_HANDLE_DEFAULT                    1
+#define SLE_ADV_HANDLE_DEFAULT  1
 /* sle server app uuid for test */
 static char g_sle_uuid_app_uuid[UUID_LEN_2] = { 0x12, 0x34 };
 /* server notify property uuid for test */
@@ -50,6 +50,11 @@ uint16_t g_sle_pair_hdl;
 static sle_uart_server_msg_queue g_sle_uart_server_msg_queue = NULL;
 static uint8_t g_sle_uart_base[] = { 0x37, 0xBE, 0xA8, 0x80, 0xFC, 0x70, 0x11, 0xEA, \
     0xB7, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
+uint16_t get_connect_id(void)
+{
+    return g_sle_conn_hdl;
+}
 
 static void encode2byte_little(uint8_t *_ptr, uint16_t data)
 {
@@ -285,7 +290,7 @@ errcode_t sle_uart_server_send_report_by_uuid(const uint8_t *data, uint8_t len)
 }
 
 /* device通过handle向host发送数据：report */
-errcode_t sle_uart_server_send_report_by_handle(const uint8_t *data, uint8_t len)
+errcode_t sle_uart_server_send_report_by_handle(const uint8_t *data, uint16_t len)
 {
     ssaps_ntf_ind_t param = {0};
     uint8_t receive_buf[UART_BUFF_LENGTH] = { 0 }; /* max receive length. */
@@ -299,6 +304,21 @@ errcode_t sle_uart_server_send_report_by_handle(const uint8_t *data, uint8_t len
     return ssaps_notify_indicate(g_server_id, g_sle_conn_hdl, &param);
 }
 
+void sle_uart_server_sample_set_mcs(uint16_t conn_id)
+{
+#ifdef CONFIG_SAMPLE_SUPPORT_PERFORMANCE_TYPE
+    if (sle_set_mcs(conn_id, 10) != 0) { // mcs10
+        osal_printk("%s sle_set_mcs fail\r\n", SLE_UART_SERVER_LOG);
+        return;
+    }
+    osal_printk("%s sle_set_mcs success\r\n", SLE_UART_SERVER_LOG);
+#else
+    unused(conn_id);
+    // 非跑流sample使用原mcs参数
+#endif
+    return;
+}
+
 static void sle_connect_state_changed_cbk(uint16_t conn_id, const sle_addr_t *addr,
     sle_acb_state_t conn_state, sle_pair_state_t pair_state, sle_disc_reason_t disc_reason)
 {
@@ -309,6 +329,10 @@ static void sle_connect_state_changed_cbk(uint16_t conn_id, const sle_addr_t *ad
         addr->addr[BT_INDEX_0], addr->addr[BT_INDEX_4]);
     if (conn_state == SLE_ACB_STATE_CONNECTED) {
         g_sle_conn_hdl = conn_id;
+#ifdef CONFIG_SAMPLE_SUPPORT_LOW_LATENCY_TYPE
+        sle_low_latency_tx_enable();
+        osal_printk("%s sle_low_latency_tx_enable \r\n", SLE_UART_SERVER_LOG);
+#endif
     } else if (conn_state == SLE_ACB_STATE_DISCONNECTED) {
         g_sle_conn_hdl = 0;
         g_sle_pair_hdl = 0;
@@ -325,6 +349,10 @@ static void sle_pair_complete_cbk(uint16_t conn_id, const sle_addr_t *addr, errc
     sample_at_log_print("%s pair complete addr:%02x:**:**:**:%02x:%02x\r\n", SLE_UART_SERVER_LOG,
         addr->addr[BT_INDEX_0], addr->addr[BT_INDEX_4]);
     g_sle_pair_hdl = conn_id + 1;
+    ssap_exchange_info_t parameter = { 0 };
+    parameter.mtu_size = 520;
+    parameter.version = 1;
+    ssaps_set_info(g_server_id, &parameter);
 }
 
 static errcode_t sle_conn_register_cbks(void)
@@ -366,11 +394,6 @@ errcode_t sle_uart_server_init(ssaps_read_request_callback ssaps_read_callback, 
     ret = sle_ssaps_register_cbks(ssaps_read_callback, ssaps_write_callback);
     if (ret != ERRCODE_SLE_SUCCESS) {
         sample_at_log_print("%s sle_uart_server_init,sle_ssaps_register_cbks fail :%x\r\n", SLE_UART_SERVER_LOG, ret);
-        return ret;
-    }
-    ret = enable_sle();
-    if (ret != ERRCODE_SLE_SUCCESS) {
-        sample_at_log_print("%s sle_uart_server_init,enable_sle fail :%x\r\n", SLE_UART_SERVER_LOG, ret);
         return ret;
     }
     sample_at_log_print("%s init ok\r\n", SLE_UART_SERVER_LOG);

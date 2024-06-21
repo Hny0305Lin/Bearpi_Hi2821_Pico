@@ -50,6 +50,7 @@ static void *dma_task(const char *arg)
 {
     unused(arg);
     /* DMA init. */
+    dma_port_clock_enable();
     uapi_dma_init();
     uapi_dma_open();
 

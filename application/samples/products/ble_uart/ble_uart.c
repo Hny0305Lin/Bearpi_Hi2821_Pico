@@ -6,38 +6,49 @@
  * History: \n
  * 2023-07-20, Create file. \n
  */
-#include "cmsis_os2.h"
+#include "securec.h"
 #include "common_def.h"
-#include "osal_debug.h"
+#include "soc_osal.h"
 #include "app_init.h"
 #include "uart.h"
-
 #if defined(CONFIG_SAMPLE_SUPPORT_BLE_UART_SERVER)
 #include "bts_gatt_server.h"
-#include "ble_uart_server/ble_uart_server.h"
+#include "ble_uart_server.h"
 #elif defined(CONFIG_SAMPLE_SUPPORT_BLE_UART_CLIENT)
 #include "bts_gatt_client.h"
-#include "ble_uart_client/ble_uart_client.h"
+#include "ble_uart_client.h"
 #endif /* CONFIG_SAMPLE_SUPPORT_BLE_UART_CLIENT */
 
-#define BLE_UART_TASK_STACK_SIZE 4096
-#define BLE_UART_TASK_PRIO (osPriority_t)(17)
-#define BLE_UART_TASK_DURATION_MS 10000
-#define BLE_UART_BT_STACK_POWER_MS 10000
+#define BLE_UART_BT_STACK_POWER_MS      10000
+
+typedef struct {
+    uint8_t *value;
+    uint16_t value_len;
+} msg_data_t;
+unsigned long mouse_msg_queue = 0;
+unsigned int msg_rev_size = sizeof(msg_data_t);
 
 #if defined(CONFIG_SAMPLE_SUPPORT_BLE_UART_SERVER)
 static void ble_uart_read_int_handler(const void *buffer, uint16_t length, bool error)
 {
+    osal_printk("ble_uart_read_int_handler server.\r\n");
     unused(error);
     if (ble_uart_get_connection_state() != 0) {
-        ble_uart_server_send_input_report((const uint8_t *)buffer, length);
+        msg_data_t msg_data = { 0 };
+        void* buffer_cpy = osal_vmalloc(length);
+        if (memcpy_s(buffer_cpy, length, buffer, length) != EOK) {
+            osal_vfree(buffer_cpy);
+            return;
+        }
+        msg_data.value = (uint8_t *)buffer_cpy;
+        msg_data.value_len = length;
+        osal_msg_queue_write_copy(mouse_msg_queue, (void *)&msg_data, msg_rev_size, 0);
     }
 }
 
 static void *ble_uart_server_task(const char *arg)
 {
     unused(arg);
-    osDelay(BLE_UART_BT_STACK_POWER_MS);
     ble_uart_server_init();
     errcode_t ret = uapi_uart_register_rx_callback(CONFIG_BLE_UART_BUS,
                                                    UART_RX_CONDITION_FULL_OR_SUFFICIENT_DATA_OR_IDLE,
@@ -46,34 +57,43 @@ static void *ble_uart_server_task(const char *arg)
         osal_printk("Register uart callback fail.");
         return NULL;
     }
-
     while (1) {
-        osDelay(BLE_UART_TASK_DURATION_MS);
+        msg_data_t msg_data = { 0 };
+        int msg_ret = osal_msg_queue_read_copy(mouse_msg_queue, &msg_data, &msg_rev_size, OSAL_WAIT_FOREVER);
+        if (msg_ret != OSAL_SUCCESS) {
+            osal_printk("msg queue read copy fail.");
+            if (msg_data.value != NULL) {
+                osal_vfree(msg_data.value);
+            }
+            continue;
+        }
+        if (msg_data.value != NULL) {
+            ble_uart_server_send_input_report(msg_data.value, msg_data.value_len);
+            osal_vfree(msg_data.value);
+        }
     }
-
     return NULL;
 }
 #elif defined(CONFIG_SAMPLE_SUPPORT_BLE_UART_CLIENT)
 static void ble_uart_read_int_handler(const void *buffer, uint16_t length, bool error)
 {
+    osal_printk("ble_uart_read_int_handler client.\r\n");
     unused(error);
-    static uint16_t write_handle = 0;
-    uapi_uart_write(CONFIG_BLE_UART_BUS, (uint8_t *)buffer, length, 0);
-    osal_printk("ble_uart_read_int_handler length = %d\n", length);
-    if (write_handle == 0) {
-        write_handle = ble_uart_get_write_vlaue_handle();
+    msg_data_t msg_data = { 0 };
+    void* buffer_cpy = osal_vmalloc(length);
+    if (memcpy_s(buffer_cpy, length, buffer, length) != EOK) {
+        osal_vfree(buffer_cpy);
+        return;
     }
-    if (write_handle != 0) {
-        ble_uart_client_write_req(buffer, length, write_handle);
-    }
+    msg_data.value = (uint8_t *)buffer_cpy;
+    msg_data.value_len = length;
+    osal_msg_queue_write_copy(mouse_msg_queue, (void *)&msg_data, msg_rev_size, 0);
 }
 
 static void *ble_uart_client_task(const char *arg)
 {
     unused(arg);
-    osDelay(BLE_UART_BT_STACK_POWER_MS);
     ble_uart_client_init();
-    osDelay(BLE_UART_BT_STACK_POWER_MS);
     errcode_t ret = uapi_uart_register_rx_callback(CONFIG_BLE_UART_BUS,
                                                    UART_RX_CONDITION_FULL_OR_SUFFICIENT_DATA_OR_IDLE,
                                                    1, ble_uart_read_int_handler);
@@ -82,31 +102,37 @@ static void *ble_uart_client_task(const char *arg)
         return NULL;
     }
     while (1) {
-        osDelay(BLE_UART_TASK_DURATION_MS);
+        msg_data_t msg_data = { 0 };
+        int msg_ret = osal_msg_queue_read_copy(mouse_msg_queue, &msg_data, &msg_rev_size, OSAL_WAIT_FOREVER);
+        if (msg_ret != OSAL_SUCCESS) {
+            osal_printk("msg queue read copy fail.");
+            if (msg_data.value != NULL) {
+                osal_vfree(msg_data.value);
+            }
+            continue;
+        }
+        if (msg_data.value != NULL) {
+            uint16_t write_handle = ble_uart_get_write_vlaue_handle();
+            ble_uart_client_write_cmd(msg_data.value, msg_data.value_len, write_handle);
+            osal_vfree(msg_data.value);
+        }
     }
     return NULL;
 }
-#endif
+#endif  /* CONFIG_SAMPLE_SUPPORT_BLE_UART_CLIENT */
 
 static void ble_uart_entry(void)
 {
-    osThreadAttr_t attr;
-
-    attr.name = "BLEUartTask";
-    attr.attr_bits = 0U;
-    attr.cb_mem = NULL;
-    attr.cb_size = 0U;
-    attr.stack_mem = NULL;
-    attr.stack_size = BLE_UART_TASK_STACK_SIZE;
-    attr.priority = BLE_UART_TASK_PRIO;
+    char *arg = NULL;
+    int msg_ret = osal_msg_queue_create("task_msg", msg_rev_size, &mouse_msg_queue, 0, msg_rev_size);
+    if (msg_ret != OSAL_SUCCESS) {
+        osal_printk("msg queue create fail.");
+        return;
+    }
 #if defined(CONFIG_SAMPLE_SUPPORT_BLE_UART_SERVER)
-    if (osThreadNew((osThreadFunc_t)ble_uart_server_task, NULL, &attr) == NULL) {
-        /* Create task fail. */
-    }
+    ble_uart_server_task(arg);
 #elif defined(CONFIG_SAMPLE_SUPPORT_BLE_UART_CLIENT)
-    if (osThreadNew((osThreadFunc_t)ble_uart_client_task, NULL, &attr) == NULL) {
-        /* Create task fail. */
-    }
+    ble_uart_client_task(arg);
 #endif /* CONFIG_SAMPLE_SUPPORT_BLE_UART_CLIENT */
 }
 

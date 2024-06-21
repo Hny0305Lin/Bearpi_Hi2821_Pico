@@ -30,7 +30,7 @@
 #define KEYSCAN_TASK_PRIO               (osPriority_t)(17)
 
 #if defined(CONFIG_KEYSCAN_USE_FULL_KEYS_TYPE)
-uint8_t g_app_key_map[KEYSCAN_MAX_ROW][KEYSCAN_MAX_COL] = {
+uint8_t g_app_key_map[CONFIG_KEYSCAN_ENABLE_ROW][CONFIG_KEYSCAN_ENABLE_COL] = {
     { 0x29, 0x2B, 0x14, 0x35, 0x04, 0x1E, 0x1D, 0x00 },
     { 0x3D, 0x3C, 0x08, 0x3B, 0x07, 0x20, 0x06, 0x00 },
     { 0x00, 0x39, 0x1A, 0x3A, 0x16, 0x1F, 0x1B, 0x00 },
@@ -48,11 +48,16 @@ uint8_t g_app_key_map[KEYSCAN_MAX_ROW][KEYSCAN_MAX_COL] = {
     { 0x5F, 0x5C, 0x61, 0x5E, 0x59, 0x62, 0x55, 0x5B },
     { 0x54, 0x60, 0x56, 0x57, 0x5D, 0x5A, 0x58, 0x63 }
 };
+
+static uint8_t g_gpio_map[CONFIG_KEYSCAN_ENABLE_ROW + CONFIG_KEYSCAN_ENABLE_COL] = {
+    31, 24, 14, 23, 27, 28, 10, 11, 30, 13, 15, 16, 25, 26, 12, 22,     //行GPIO
+    2, 3, 4, 5, 6, 21, 9, 29 };                                         //列GPIO
+
 #else
-uint8_t g_app_key_map[KEYSCAN_MAX_ROW][KEYSCAN_MAX_COL] = {
-    { 0x29, 0x2B },
-    { 0x3D, 0x3C },
-    { 0x00, 0x39 }
+uint8_t g_app_key_map[CONFIG_KEYSCAN_ENABLE_ROW][CONFIG_KEYSCAN_ENABLE_COL] = {
+    { 0x05, 0x16 },  /* BS */
+    { 0x1F, 0x25 },  /* 28 */
+    { 0x5A, 0x1B },  /* 2x */
 };
 #endif
 
@@ -87,24 +92,19 @@ static int app_keyscan_report_callback(int key_nums, uint8_t key_values[])
     return 0;
 }
 
-static void *keyscan_task(const char *arg)
+static void keyscan_entry(void)
 {
-    unused(arg);
 #if defined(CONFIG_KEYSCAN_USE_FULL_KEYS_TYPE)
     keyscan_porting_config_pins();
 #endif
-
+    if (keyscan_porting_set_gpio(g_gpio_map)) {
+        return;
+    }
     /* Set the key value matrix of Keyscan. */
-    if (uapi_set_keyscan_value_map((uint8_t **)g_app_key_map, KEYSCAN_MAX_ROW, KEYSCAN_MAX_COL) == ERRCODE_SUCC) {
+    if (uapi_set_keyscan_value_map((uint8_t **)g_app_key_map,
+        CONFIG_KEYSCAN_ENABLE_ROW, CONFIG_KEYSCAN_ENABLE_COL) == ERRCODE_SUCC) {
         osal_printk("the key value matrix of Keyscan has been successfully configured!\r\n");
     }
-
-    /* Slect KEYSCAN Keyboard Type. */
-#if defined(CONFIG_KEYSCAN_USE_FULL_KEYS_TYPE)
-    keyscan_porting_type_sel(0);
-#else
-    keyscan_porting_type_sel(1);
-#endif
     /* KEYSCAN Init Config. */
     uapi_keyscan_init(KEYSCAN_PULSE_TIME, KEYSCAN_MODE_SET, KEYSCAN_INTERRUPT_TYPE);
 
@@ -115,25 +115,6 @@ static void *keyscan_task(const char *arg)
     osal_printk("keyscan enable start!\r\n");
     if (uapi_keyscan_enable() == ERRCODE_KEYSCAN_POWER_ON) {
         osal_printk("keyscan enable start succ!\r\n");
-    }
-
-    return NULL;
-}
-
-static void keyscan_entry(void)
-{
-    osThreadAttr_t attr;
-
-    attr.name = "KeyscanTask";
-    attr.attr_bits = 0U;
-    attr.cb_mem = NULL;
-    attr.cb_size = 0U;
-    attr.stack_mem = NULL;
-    attr.stack_size = KEYSCAN_TASK_STACK_SIZE;
-    attr.priority = KEYSCAN_TASK_PRIO;
-
-    if (osThreadNew((osThreadFunc_t)keyscan_task, NULL, &attr) == NULL) {
-        /* Create task fail. */
     }
 }
 

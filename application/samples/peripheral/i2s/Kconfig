@@ -20,31 +20,25 @@ config I2S_CLK_MASTER_PIN
     int
     prompt "Choose I2S CLK master pin."
     depends on SAMPLE_SUPPORT_I2S_MASTER
-    default 33
+    default 13
 
 config I2S_WS_MASTER_PIN
     int
     prompt "Choose I2S WS master pin."
     depends on SAMPLE_SUPPORT_I2S_MASTER
-    default 34
+    default 14
 
 config I2S_DO_MASTER_PIN
     int
     prompt "Choose I2S DO master pin."
     depends on SAMPLE_SUPPORT_I2S_MASTER
-    default 35
+    default 15
 
 config I2S_DI_MASTER_PIN
     int
     prompt "Choose I2S DI master pin."
     depends on SAMPLE_SUPPORT_I2S_MASTER
-    default 36
-
-config I2S_MASTER_PIN_MODE
-    int
-    prompt "Choose I2S master pin mode."
-    depends on SAMPLE_SUPPORT_I2S_MASTER
-    default 1
+    default 16
 
 config SAMPLE_SUPPORT_I2S_SLAVE
     bool
@@ -64,31 +58,25 @@ config I2S_CLK_SLAVE_PIN
     int
     prompt "Choose I2S CLK slave pin."
     depends on SAMPLE_SUPPORT_I2S_SLAVE
-    default 33
+    default 13
 
 config I2S_WS_SLAVE_PIN
     int
     prompt "Choose I2S WS slave pin."
     depends on SAMPLE_SUPPORT_I2S_SLAVE
-    default 34
+    default 14
 
 config I2S_DO_SLAVE_PIN
     int
     prompt "Choose I2S DO slave pin."
     depends on SAMPLE_SUPPORT_I2S_SLAVE
-    default 35
+    default 15
 
 config I2S_DI_SLAVE_PIN
     int
     prompt "Choose I2S DI slave pin."
     depends on SAMPLE_SUPPORT_I2S_SLAVE
-    default 36
-
-config I2S_SLAVE_PIN_MODE
-    int
-    prompt "Choose I2S slave pin mode."
-    depends on SAMPLE_SUPPORT_I2S_SLAVE
-    default 1
+    default 16
 
 config I2S_TRANSFER_LEN
     int

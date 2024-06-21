@@ -34,10 +34,10 @@ static i2s_tx_data_t g_app_write_data = {
 static void app_i2s_init_pin(void)
 {
     /* I2S pinmux. */
-    uapi_pin_set_mode(CONFIG_I2S_CLK_MASTER_PIN, CONFIG_I2S_MASTER_PIN_MODE);
-    uapi_pin_set_mode(CONFIG_I2S_WS_MASTER_PIN, CONFIG_I2S_MASTER_PIN_MODE);
-    uapi_pin_set_mode(CONFIG_I2S_DO_MASTER_PIN, CONFIG_I2S_MASTER_PIN_MODE);
-    uapi_pin_set_mode(CONFIG_I2S_DI_MASTER_PIN, CONFIG_I2S_MASTER_PIN_MODE);
+    uapi_pin_set_mode(CONFIG_I2S_CLK_MASTER_PIN, HAL_PIO_I2S_SCLK);
+    uapi_pin_set_mode(CONFIG_I2S_WS_MASTER_PIN, HAL_PIO_I2S_WS);
+    uapi_pin_set_mode(CONFIG_I2S_DO_MASTER_PIN, HAL_PIO_I2S_DOUT);
+    uapi_pin_set_mode(CONFIG_I2S_DI_MASTER_PIN, HAL_PIO_I2S_DIN);
 }
 
 void app_i2s_rx_callbcak(uint32_t *left_buff, uint32_t *right_buff, uint32_t length)

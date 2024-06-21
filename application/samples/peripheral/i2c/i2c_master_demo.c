@@ -11,16 +11,11 @@
 #include "osal_debug.h"
 #include "cmsis_os2.h"
 #include "app_init.h"
-#if defined(CONFIG_I2C_SUPPORT_DMA) && (CONFIG_I2C_SUPPORT_DMA == 1)
-#include "dma.h"
-#endif
 
 #define I2C_MASTER_ADDR                   0x0
 #define I2C_SLAVE_ADDR                    0x8
 #define I2C_SET_BAUDRATE                  500000
-#if defined(CONFIG_I2C_SUPPORT_INT) && (CONFIG_I2C_SUPPORT_INT == 1)
-#define I2C_INT_TRANSFER_DELAY_MS         800
-#endif
+
 
 #define I2C_TASK_STACK_SIZE               0x1000
 #define I2C_TASK_DURATION_MS              500
@@ -29,8 +24,15 @@
 static void app_i2c_init_pin(void)
 {
     /* I2C pinmux. */
-    uapi_pin_set_mode(CONFIG_I2C_SCL_MASTER_PIN, CONFIG_I2C_MASTER_PIN_MODE);
-    uapi_pin_set_mode(CONFIG_I2C_SDA_MASTER_PIN, CONFIG_I2C_MASTER_PIN_MODE);
+    if (CONFIG_I2C_MASTER_BUS_ID == 0) {
+        uapi_pin_set_mode(CONFIG_I2C_SCL_MASTER_PIN, HAL_PIO_I2C0_CLK);
+        uapi_pin_set_mode(CONFIG_I2C_SDA_MASTER_PIN, HAL_PIO_I2C0_DATA);       
+    }else if (CONFIG_I2C_MASTER_BUS_ID == 1) {
+        uapi_pin_set_mode(CONFIG_I2C_SCL_MASTER_PIN, HAL_PIO_I2C1_CLK);
+        uapi_pin_set_mode(CONFIG_I2C_SDA_MASTER_PIN, HAL_PIO_I2C1_DATA);       
+    }
+    uapi_pin_set_pull(CONFIG_I2C_SCL_MASTER_PIN, PIN_PULL_UP);
+    uapi_pin_set_pull(CONFIG_I2C_SDA_MASTER_PIN, PIN_PULL_UP);
 }
 
 static void *i2c_master_task(const char *arg)
@@ -42,18 +44,10 @@ static void *i2c_master_task(const char *arg)
     uint8_t hscode = I2C_MASTER_ADDR;
     uint16_t dev_addr = I2C_SLAVE_ADDR;
 
-#if defined(CONFIG_I2C_SUPPORT_DMA) && (CONFIG_I2C_SUPPORT_DMA == 1)
-    uapi_dma_init();
-    uapi_dma_open();
-#endif  /* CONFIG_I2C_SUPPORT_DMA */
-
     /* I2C master init config. */
+
     app_i2c_init_pin();
     uapi_i2c_master_init(CONFIG_I2C_MASTER_BUS_ID, baudrate, hscode);
-
-#if defined(CONFIG_I2C_SUPPORT_INT) && (CONFIG_I2C_SUPPORT_INT == 1)
-    uapi_i2c_set_irq_mode(CONFIG_I2C_MASTER_BUS_ID, 1);
-#endif  /* CONFIG_I2C_SUPPORT_INT */
 
     /* I2C data config. */
     uint8_t tx_buff[CONFIG_I2C_TRANSFER_LEN] = { 0 };
@@ -75,9 +69,6 @@ static void *i2c_master_task(const char *arg)
         } else {
             continue;
         }
-#if defined(CONFIG_I2C_SUPPORT_INT) && (CONFIG_I2C_SUPPORT_INT == 1)
-        osDelay(I2C_INT_TRANSFER_DELAY_MS);
-#endif
         osal_printk("i2c%d master receive start!\r\n", CONFIG_I2C_MASTER_BUS_ID);
         if (uapi_i2c_master_read(CONFIG_I2C_MASTER_BUS_ID, dev_addr, &data) == ERRCODE_SUCC) {
             for (uint32_t i = 0; i < data.receive_len; i++) {

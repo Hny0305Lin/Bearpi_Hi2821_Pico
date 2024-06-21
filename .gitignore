@@ -1,3 +1,11 @@
 .deveco/**
 .vscode/**
 
+out/
+
+output/
+
+**/__pycache__
+
+interim_binary/bs21/bin/nv/standard-bs21-n1100/bs21_all_nv.bin
+tools/pkg/fwpkg/bs21/bs21_all.fwpkg

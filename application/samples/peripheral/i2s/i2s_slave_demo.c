@@ -23,10 +23,10 @@
 static void app_i2s_init_pin(void)
 {
     /* I2S pinmux. */
-    uapi_pin_set_mode(CONFIG_I2S_CLK_SLAVE_PIN, CONFIG_I2S_SLAVE_PIN_MODE);
-    uapi_pin_set_mode(CONFIG_I2S_WS_SLAVE_PIN, CONFIG_I2S_SLAVE_PIN_MODE);
-    uapi_pin_set_mode(CONFIG_I2S_DO_SLAVE_PIN, CONFIG_I2S_SLAVE_PIN_MODE);
-    uapi_pin_set_mode(CONFIG_I2S_DI_SLAVE_PIN, CONFIG_I2S_SLAVE_PIN_MODE);
+    uapi_pin_set_mode(CONFIG_I2S_CLK_SLAVE_PIN, HAL_PIO_I2S_SCLK);
+    uapi_pin_set_mode(CONFIG_I2S_WS_SLAVE_PIN, HAL_PIO_I2S_WS);
+    uapi_pin_set_mode(CONFIG_I2S_DO_SLAVE_PIN, HAL_PIO_I2S_DOUT);
+    uapi_pin_set_mode(CONFIG_I2S_DI_SLAVE_PIN, HAL_PIO_I2S_DIN);
 }
 
 void app_i2s_rx_callbcak(uint32_t *left_buff, uint32_t *right_buff, uint32_t length)

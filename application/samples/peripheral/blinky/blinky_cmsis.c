@@ -9,7 +9,7 @@
 #include "boards.h"
 #include "pinctrl.h"
 #include "gpio.h"
-#include "test_suite_log.h"
+#include "osal_debug.h"
 #include "cmsis_os2.h"
 #include "app_init.h"
 
@@ -19,15 +19,13 @@
 static void *blinky_task(const char *arg)
 {
     unused(arg);
-
-    uapi_pin_set_mode(BSP_LED_0, HAL_PIO_FUNC_GPIO);
-
-    uapi_gpio_set_dir(BSP_LED_0, GPIO_DIRECTION_OUTPUT);
-    uapi_gpio_set_val(BSP_LED_0, GPIO_LEVEL_LOW);
+    uapi_pin_set_mode(CONFIG_BLINKY_PIN, HAL_PIO_FUNC_GPIO);
+    uapi_gpio_set_dir(CONFIG_BLINKY_PIN, GPIO_DIRECTION_OUTPUT);
+    uapi_gpio_set_val(CONFIG_BLINKY_PIN, GPIO_LEVEL_LOW);
 
     while (1) {
         osDelay(CONFIG_BLINKY_DURATION_MS);
-        uapi_gpio_toggle(BSP_LED_0);
+        uapi_gpio_toggle(CONFIG_BLINKY_PIN);
     }
 
     return NULL;

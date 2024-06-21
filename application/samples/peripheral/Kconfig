@@ -2,13 +2,31 @@
 # @brief    Kconfig file.
 # Copyright (c) @CompanyNameMagicTag 2023-2023. All rights reserved.
 #===============================================================================
-config ENABLE_PERIPHERAL_SAMPLE
+config ENABLE_ALL_PERIPHERAL_SAMPLE
     bool
-    prompt "Enable the Sample of peripheral."
+    prompt "Enable all the sample of peripheral, it's just for build."
     default n
-    depends on SAMPLE_ENABLE
+    depends on ENABLE_PERIPHERAL_SAMPLE
+    select SAMPLE_SUPPORT_ADC
+    select SAMPLE_SUPPORT_BLINKY
+    select SAMPLE_SUPPORT_BUTTON
+    select SAMPLE_SUPPORT_DMA
+    select SAMPLE_SUPPORT_I2C
+    select SAMPLE_SUPPORT_I2S
+    select SAMPLE_SUPPORT_KEYSCAN
+    select SAMPLE_SUPPORT_PINCTRL
+    select SAMPLE_SUPPORT_PWM
+    select SAMPLE_SUPPORT_QDEC
+    select SAMPLE_SUPPORT_RTC
+    select SAMPLE_SUPPORT_SPI
+    select SAMPLE_SUPPORT_SYSTICK
+    select SAMPLE_SUPPORT_TASKS
+    select SAMPLE_SUPPORT_TCXO
+    select SAMPLE_SUPPORT_TIMER
+    select SAMPLE_SUPPORT_UART
+    select SAMPLE_SUPPORT_WDT
     help
-        This option means enable the sample of peripheral.
+        This option means enable all the sample of peripheral, it is just for build.
 
 config SAMPLE_SUPPORT_ADC
     bool
@@ -24,19 +42,6 @@ menu "ADC Sample Configuration"
 endmenu
 endif
 
-config SAMPLE_SUPPORT_AFE
-    bool
-    prompt "Support AFE Sample."
-    default n
-    depends on ENABLE_PERIPHERAL_SAMPLE
-    help
-        This option means support AFE Sample.
-
-if SAMPLE_SUPPORT_AFE
-menu "AFE Sample Configuration"
-    osource "application/samples/peripheral/afe/Kconfig"
-endmenu
-endif
 
 config SAMPLE_SUPPORT_BLINKY
     bool
@@ -59,18 +64,9 @@ config SAMPLE_SUPPORT_BUTTON
     depends on ENABLE_PERIPHERAL_SAMPLE
     help
         This option means support BUTTON Sample.
-
-config SAMPLE_SUPPORT_CALENDAR
-    bool
-    prompt "Support CALENDAR Sample."
-    default n
-    depends on ENABLE_PERIPHERAL_SAMPLE
-    help
-        This option means support CALENDAR Sample.
-
-if SAMPLE_SUPPORT_CALENDAR
-menu "CALENDAR Sample Configuration"
-    osource "application/samples/peripheral/calendar/Kconfig"
+if SAMPLE_SUPPORT_BUTTON
+menu "BUTTON Sample Configuration"
+    osource "application/samples/peripheral/button/Kconfig"
 endmenu
 endif
 
@@ -85,20 +81,6 @@ config SAMPLE_SUPPORT_DMA
 if SAMPLE_SUPPORT_DMA
 menu "DMA Sample Configuration"
     osource "application/samples/peripheral/dma/Kconfig"
-endmenu
-endif
-
-config SAMPLE_SUPPORT_EFLASH
-    bool
-    prompt "Support EFLASH Sample."
-    default n
-    depends on ENABLE_PERIPHERAL_SAMPLE
-    help
-        This option means support EFLASH Sample.
-
-if SAMPLE_SUPPORT_EFLASH
-menu "EFLASH Sample Configuration"
-    osource "application/samples/peripheral/eflash/Kconfig"
 endmenu
 endif
 
@@ -130,20 +112,6 @@ menu "I2S Sample Configuration"
 endmenu
 endif
 
-config SAMPLE_SUPPORT_I2S_DMA
-    bool
-    prompt "Support I2S DMA Sample."
-    default n
-    depends on ENABLE_PERIPHERAL_SAMPLE
-    help
-        This option means support I2S Sample.
-
-if SAMPLE_SUPPORT_I2S_DMA
-menu "I2S DMA Sample Configuration"
-    osource "application/samples/peripheral/i2s_dma/Kconfig"
-endmenu
-endif
-
 config SAMPLE_SUPPORT_KEYSCAN
     bool
     prompt "Support KEYSCAN Sample."
@@ -151,20 +119,6 @@ config SAMPLE_SUPPORT_KEYSCAN
     depends on ENABLE_PERIPHERAL_SAMPLE
     help
         This option means support KEYSCAN Sample.
-
-config SAMPLE_SUPPORT_PDM
-    bool
-    prompt "Support PDM Sample."
-    default n
-    depends on ENABLE_PERIPHERAL_SAMPLE
-    help
-        This option means support PDM Sample.
-
-if SAMPLE_SUPPORT_PDM
-menu "PDM Sample Configuration"
-    osource "application/samples/peripheral/pdm/Kconfig"
-endmenu
-endif
 
 config SAMPLE_SUPPORT_PINCTRL
     bool

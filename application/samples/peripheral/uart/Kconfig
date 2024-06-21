@@ -2,29 +2,23 @@
 # @brief    Kconfig file.
 # Copyright (c) @CompanyNameMagicTag 2023-2023. All rights reserved.
 #===============================================================================
-config UART0_BUS_ID
+config UART_BUS_ID
     int
-    prompt "Choose UART0 bus id."
+    prompt "Choose UART bus id."
     depends on SAMPLE_SUPPORT_UART
-    default 0
+    default 2
 
-config UART0_TXD_PIN
+config UART_TXD_PIN
     int
-    prompt "Choose UART0 TXD pin."
+    prompt "Choose UART TXD pin."
     depends on SAMPLE_SUPPORT_UART
-    default 47
+    default 13
 
-config UART0_RXD_PIN
+config UART_RXD_PIN
     int
-    prompt "Choose UART0 RXD pin."
+    prompt "Choose UART RXD pin."
     depends on SAMPLE_SUPPORT_UART
-    default 46
-
-config UART0_PIN_MODE
-    int
-    prompt "Choose UART0 pin mode."
-    depends on SAMPLE_SUPPORT_UART
-    default 1
+    default 14
 
 config UART_POLL_TRANSFER_MODE
     bool
@@ -35,11 +29,5 @@ config UART_POLL_TRANSFER_MODE
 config UART_INT_TRANSFER_MODE
     bool
     prompt "Choose UART interrupt transfer mode."
-    depends on SAMPLE_SUPPORT_UART
-    default n
-
-config UART_DMA_TRANSFER_MODE
-    bool
-    prompt "Choose UART dma transfer mode."
     depends on SAMPLE_SUPPORT_UART
     default n

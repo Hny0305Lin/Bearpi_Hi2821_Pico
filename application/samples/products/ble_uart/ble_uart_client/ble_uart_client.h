@@ -21,11 +21,8 @@ extern "C" {
 #endif /* __cplusplus */
 
 errcode_t ble_uart_client_discover_all_service(uint16_t conn_id);
-
-errcode_t ble_uart_client_write_req(const uint8_t *data, uint16_t len, uint16_t hand);
-
+errcode_t ble_uart_client_write_cmd(uint8_t *data, uint16_t len, uint16_t hand);
 errcode_t ble_uart_client_init(void);
-
 uint16_t ble_uart_get_write_vlaue_handle(void);
 
 #ifdef __cplusplus

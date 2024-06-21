@@ -28,13 +28,9 @@ extern "C" {
 #define BLE_UART_CLIENT_CHARACTERISTIC_CONFIGURATION 0x2902
 
 void ble_uart_set_device_name_value(const uint8_t *name, const uint8_t len);
-
 void ble_uart_set_device_appearance_value(uint16_t appearance);
-
 void ble_uart_server_init(void);
-
-errcode_t ble_uart_server_send_input_report(const uint8_t *data, uint16_t len);
-
+errcode_t ble_uart_server_send_input_report(uint8_t *data, uint16_t len);
 uint8_t ble_uart_get_connection_state(void);
 
 #ifdef __cplusplus

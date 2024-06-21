@@ -9,8 +9,10 @@
 #include "securec.h"
 #include "errcode.h"
 #include "osal_addr.h"
+#include "product.h"
 #include "sle_common.h"
 #include "sle_uart_server.h"
+#include "sle_device_manager.h"
 #include "sle_device_discovery.h"
 #include "sle_errcode.h"
 #include "osal_debug.h"
@@ -215,25 +217,47 @@ static void sle_announce_terminal_cbk(uint32_t announce_id)
     sample_at_log_print("%s sle announce terminal callback id:%02x\r\n", SLE_UART_SERVER_LOG, announce_id);
 }
 
-static void sle_enable_cbk(errcode_t status)
+static void sle_power_on_cbk(uint8_t status)
 {
-    sample_at_log_print("%s sle enable callback status:%x\r\n", SLE_UART_SERVER_LOG, status);
-    osal_msleep(SLE_SERVER_INIT_DELAY_MS);
+    sample_at_log_print("sle power on: %d\r\n", status);
+    enable_sle();
+}
+
+static void sle_enable_cbk(uint8_t status)
+{
+    sample_at_log_print("sle enable: %d\r\n", status);
     sle_enable_server_cbk();
+}
+
+errcode_t sle_dev_register_cbks(void)
+{
+    errcode_t ret = 0;
+    sle_dev_manager_callbacks_t dev_mgr_cbks = {0};
+    dev_mgr_cbks.sle_power_on_cb = sle_power_on_cbk;
+    dev_mgr_cbks.sle_enable_cb = sle_enable_cbk;
+    ret = sle_dev_manager_register_callbacks(&dev_mgr_cbks);
+    if (ret != ERRCODE_SLE_SUCCESS) {
+        sample_at_log_print("%s sle_dev_register_cbks,register_callbacks fail :%x\r\n",
+            SLE_UART_SERVER_LOG, ret);
+        return ret;
+    }
+#if (CORE_NUMS < 2)
+    enable_sle();
+#endif
+    return ERRCODE_SLE_SUCCESS;
 }
 
 errcode_t sle_uart_announce_register_cbks(void)
 {
-    errcode_t ret;
+    errcode_t ret = 0;
     sle_announce_seek_callbacks_t seek_cbks = {0};
     seek_cbks.announce_enable_cb = sle_announce_enable_cbk;
     seek_cbks.announce_disable_cb = sle_announce_disable_cbk;
     seek_cbks.announce_terminal_cb = sle_announce_terminal_cbk;
-    seek_cbks.sle_enable_cb = sle_enable_cbk;
     ret = sle_announce_seek_register_callbacks(&seek_cbks);
     if (ret != ERRCODE_SLE_SUCCESS) {
         sample_at_log_print("%s sle_uart_announce_register_cbks,register_callbacks fail :%x\r\n",
-        SLE_UART_SERVER_LOG, ret);
+            SLE_UART_SERVER_LOG, ret);
         return ret;
     }
     return ERRCODE_SLE_SUCCESS;

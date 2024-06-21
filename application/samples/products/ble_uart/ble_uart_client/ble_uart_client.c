@@ -7,10 +7,12 @@
  * 2023-04-03, Create file. \n
  */
 #include "securec.h"
+#include "product.h"
 #include "osal_debug.h"
 #include "osal_addr.h"
 #include "uart.h"
 #include "bts_le_gap.h"
+#include "bts_device_manager.h"
 #include "bts_gatt_client.h"
 #include "ble_uart_client_scan.h"
 #include "ble_uart_client.h"
@@ -51,25 +53,23 @@ errcode_t ble_uart_client_discover_all_service(uint16_t conn_id)
 }
 
 /* ble client write data to server */
-errcode_t ble_uart_client_write_req(const uint8_t *data, uint16_t len, uint16_t handle)
+errcode_t ble_uart_client_write_cmd(uint8_t *data, uint16_t len, uint16_t handle)
 {
     gattc_handle_value_t uart_handle_value = { 0 };
     uart_handle_value.handle = handle;
     uart_handle_value.data_len = len;
-    uart_handle_value.data = osal_vmalloc(len);
-    osal_printk("%s ble_uart_client_write_req len: %d, g_uart_client_id: %x\n",
+    uart_handle_value.data = data;
+    osal_printk("%s ble_uart_client_write_cmd len: %d, g_uart_client_id: %x\n",
                 BLE_UART_CLIENT_LOG, len, g_uart_client_id);
     for (uint16_t i = 0; i < len; i++) {
-        osal_printk("%2x", data[i]);
+        osal_printk("%02x", data[i]);
     }
     osal_printk("\n");
-    if (memcpy_s(uart_handle_value.data, uart_handle_value.data_len, data, len) != EOK) {
-        osal_printk("%s send input report memcpy fail\r\n", BLE_UART_CLIENT_ERROR);
-        osal_vfree(uart_handle_value.data);
+    errcode_t ret = gattc_write_cmd(g_uart_client_id, g_uart_conn_id, &uart_handle_value);
+    if (ret != ERRCODE_BT_SUCCESS) {
+        osal_printk("%s gattc_write_cmd failed\n", BLE_UART_CLIENT_LOG);
         return ERRCODE_BT_FAIL;
     }
-    gattc_write_req(g_uart_client_id, g_uart_conn_id, &uart_handle_value);
-    osal_vfree(uart_handle_value.data);
     return ERRCODE_BT_SUCCESS;
 }
 
@@ -119,6 +119,7 @@ void ble_uart_client_connect_change_cbk(uint16_t conn_id, bd_addr_t *addr, gap_b
         gattc_exchange_mtu_req(g_uart_client_id, g_uart_conn_id, g_uart_mtu);
     } else if (conn_state == GAP_BLE_STATE_DISCONNECTED) {
         osal_printk("%s connect change cbk conn disconnected \n", BLE_UART_CLIENT_LOG);
+        ble_uart_start_scan();
         return;
     }
 }
@@ -135,10 +136,18 @@ void ble_uart_client_pair_result_cb(uint16_t conn_id, const bd_addr_t *addr, err
     gattc_exchange_mtu_req(g_uart_client_id, g_uart_conn_id, g_uart_mtu);
 }
 
-/* ble client bt stack enable callback */
-void ble_uart_client_enable_cbk(errcode_t status)
+void ble_uart_client_power_on_cbk(uint8_t status)
 {
-    osal_printk("%s enable status: %d \n", BLE_UART_CLIENT_LOG, status);
+    osal_printk("ble power on: %d\n", status);
+    enable_ble();
+}
+
+/* ble client bt stack enable callback */
+void ble_uart_client_enable_cbk(uint8_t status)
+{
+    osal_printk("ble enable: %d\n", status);
+    gattc_register_client(&g_client_app_uuid, &g_uart_client_id);
+    ble_uart_set_scan_parameters();
 }
 
 /* ble client service discovery callback */
@@ -298,7 +307,8 @@ static void ble_uart_client_indication_cbk(uint8_t client_id, uint16_t conn_id, 
 /* register gatt and gap callback */
 errcode_t ble_uart_client_callback_register(void)
 {
-    errcode_t ret = ERRCODE_BT_UNHANDLED;
+    errcode_t ret = 0;
+    bts_dev_manager_callbacks_t dev_cb = { 0 };
     gap_ble_callbacks_t gap_cb = { 0 };
     gattc_callbacks_t cb = { 0 };
 
@@ -306,8 +316,10 @@ errcode_t ble_uart_client_callback_register(void)
     gap_cb.scan_result_cb = ble_uart_client_scan_result_cbk;
     gap_cb.conn_state_change_cb = ble_uart_client_connect_change_cbk;
     gap_cb.pair_result_cb = ble_uart_client_pair_result_cb;
-    gap_cb.ble_enable_cb = ble_uart_client_enable_cbk;
-    ret = gap_ble_register_callbacks(&gap_cb);
+    dev_cb.power_on_cb = ble_uart_client_power_on_cbk;
+    dev_cb.ble_enable_cb = ble_uart_client_enable_cbk;
+    ret |= bts_dev_manager_register_callbacks(&dev_cb);
+    ret |= gap_ble_register_callbacks(&gap_cb);
     if (ret != ERRCODE_BT_SUCCESS) {
         osal_printk("%s reg gap cbk failed ret = %d\n", BLE_UART_CLIENT_ERROR, ret);
     }
@@ -328,17 +340,16 @@ errcode_t ble_uart_client_callback_register(void)
     if (ret != ERRCODE_BT_SUCCESS) {
         osal_printk("%s reg gatt cbk failed ret = %d\n", BLE_UART_CLIENT_ERROR, ret);
     }
+#if (CORE_NUMS < 2)
+    enable_ble();
+#endif
     return ret;
 }
 
 /* ble uart client init */
 errcode_t ble_uart_client_init(void)
 {
-    errcode_t ret = ERRCODE_BT_SUCCESS;
-    ret |= enable_ble();
-    ret |= ble_uart_client_callback_register();
-    ret |= gattc_register_client(&g_client_app_uuid, &g_uart_client_id);
-    ret |= ble_uart_set_scan_parameters();
+    errcode_t ret = ble_uart_client_callback_register();
     if (ret != ERRCODE_BT_SUCCESS) {
         osal_printk("%s init failed ret = %d\n", BLE_UART_CLIENT_ERROR, ret);
     }

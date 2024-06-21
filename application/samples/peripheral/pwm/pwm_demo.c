@@ -14,6 +14,7 @@
 #include "tcxo.h"
 
 #define PWM_CHANNEL                0
+#define PWM_GROUP_ID               0
 #define TEST_MAX_TIMES             5
 #define DALAY_MS                   100
 #define TEST_TCXO_DELAY_1000MS     1000
@@ -24,23 +25,30 @@ static void *pwm_task(const char *arg)
 {
     UNUSED(arg);
     pwm_config_t cfg_no_repeat = {
-        100,
         200,
-        0xFF,
-        0xFF,
-        false
+        50,
+        0,
+        0,
+        true
     };
 
-    uapi_pin_set_mode(CONFIG_PWM_PIN, CONFIG_PWM_PIN_MODE);
+    uapi_pin_set_mode(CONFIG_PWM_PIN, HAL_PIO_PWM0);
     uapi_pwm_init();
-    uapi_pwm_open(PWM_CHANNEL, &cfg_no_repeat);
 
     uapi_tcxo_delay_ms((uint32_t)TEST_TCXO_DELAY_1000MS);
-    uapi_pwm_start(PWM_CHANNEL);
+
+    uint8_t channel = PWM_CHANNEL;
+    uapi_pwm_set_group(PWM_GROUP_ID, &channel, 1);
+    uapi_pwm_open(PWM_CHANNEL, &cfg_no_repeat);
+    uapi_pwm_config_preload(PWM_GROUP_ID, channel, &cfg_no_repeat);
+    uapi_pwm_start(PWM_GROUP_ID);
+
 
     uapi_tcxo_delay_ms((uint32_t)TEST_TCXO_DELAY_1000MS);
 
     uapi_pwm_close(PWM_CHANNEL);
+
+
     uapi_tcxo_delay_ms((uint32_t)TEST_TCXO_DELAY_1000MS);
     uapi_pwm_deinit();
     return NULL;
